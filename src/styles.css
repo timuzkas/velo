@@ -18,7 +18,7 @@
   --line: rgba(22, 54, 41, 0.12);
   --shadow: 0 8px 24px rgba(18, 68, 46, 0.1);
   --shadow-soft: 0 3px 12px rgba(18, 68, 46, 0.08);
-  --mobile-nav-space: calc(132px + env(safe-area-inset-bottom));
+  --mobile-nav-space: calc(92px + env(safe-area-inset-bottom));
 }
 
 * {
@@ -1257,7 +1257,7 @@ input:focus-visible {
     max-height: min(58vh, calc(100vh - var(--mobile-nav-space) - 64px));
     max-height: min(58dvh, calc(100dvh - var(--mobile-nav-space) - 64px));
     overflow-y: auto;
-    padding: 10px;
+    padding: 10px 10px 14px;
   }
 
   .route-points {
@@ -1289,6 +1289,10 @@ input:focus-visible {
   .mode-row,
   .planner-actions {
     gap: 6px;
+  }
+
+  .planner-actions {
+    margin-bottom: 2px;
   }
 
   .mode-pill {

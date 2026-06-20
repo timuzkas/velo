@@ -39,6 +39,7 @@ import {
 import { calculateRoute, getModePreset } from "./routing";
 import { computeRideStats, sampleFromPosition } from "./rideStats";
 import {
+  clearRoute,
   loadOrsApiKey,
   loadRide,
   loadRoute,
@@ -106,6 +107,7 @@ export function App() {
   const [keyDialogOpen, setKeyDialogOpen] = useState(!savedInitialKey);
   const [collapsedScreen, setCollapsedScreen] = useState<Screen | null>(null);
   const [route, setRoute] = useState<BikeRoute | null>(() => loadRoute());
+  const [completedRoute, setCompletedRoute] = useState<BikeRoute | null>(null);
   const [savedRoutes, setSavedRoutes] = useState<BikeRoute[]>(() => loadSavedRoutes());
   const [savedPlaces, setSavedPlaces] = useState(() => loadSavedPlaces());
   const [recentExpanded, setRecentExpanded] = useState(false);
@@ -123,6 +125,8 @@ export function App() {
   const [rideFollowing, setRideFollowing] = useState(true);
   const watchIdRef = useRef<number | null>(null);
   const hasRoute = Boolean(route);
+  const statsRoute = route ?? completedRoute;
+  const canShowStats = Boolean(route || (screen === "stats" && completedRoute));
   const hasApiKey = Boolean(apiKey);
 
   const stats = useMemo(() => computeRideStats(ride, now), [ride, now]);
@@ -190,8 +194,8 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    if (!hasRoute && screen !== "planner") setScreen("planner");
-  }, [hasRoute, screen]);
+    if (!hasRoute && !completedRoute && screen !== "planner") setScreen("planner");
+  }, [completedRoute, hasRoute, screen]);
 
   useEffect(() => {
     return () => {
@@ -398,11 +402,17 @@ export function App() {
   }
 
   function endRide() {
+    const routeSnapshot = route;
     if (watchIdRef.current !== null) {
       navigator.geolocation.clearWatch(watchIdRef.current);
       watchIdRef.current = null;
     }
     setRide((current) => ({ ...current, active: false, endedAt: Date.now() }));
+    clearRoute();
+    setCompletedRoute(routeSnapshot);
+    setRoute(null);
+    setRideFollowing(true);
+    setCollapsedScreen(null);
     setScreen("stats");
   }
 
@@ -475,7 +485,15 @@ export function App() {
   }
 
   function openScreen(target: Screen) {
-    if ((target === "ride" || target === "stats") && !hasRoute) return;
+    if (screen === "stats" && completedRoute && !hasRoute) {
+      if (target === "stats") return;
+      setCompletedRoute(null);
+      setCollapsedScreen(null);
+      setScreen(target === "ride" ? "planner" : target);
+      return;
+    }
+    if (target === "ride" && !hasRoute) return;
+    if (target === "stats" && !canShowStats) return;
     if (screen === target) {
       setCollapsedScreen((current) => (current === target ? null : target));
       return;
@@ -797,7 +815,7 @@ export function App() {
           </section>
         )}
 
-        {screen === "stats" && hasRoute && collapsedScreen !== "stats" && (
+        {screen === "stats" && statsRoute && collapsedScreen !== "stats" && (
           <section className="sheet stats-sheet" aria-label="Ride stats">
             <div className="stats-header">
               <div>
@@ -845,7 +863,7 @@ export function App() {
               <Metric
                 icon={Activity}
                 label="Route climb"
-                value={`${Math.round(route?.elevationGainMeters ?? 0)} m`}
+                value={`${Math.round(statsRoute.elevationGainMeters ?? 0)} m`}
               />
             </div>
           </section>
@@ -870,7 +888,7 @@ export function App() {
           active={screen === "stats" && collapsedScreen !== "stats"}
           label="Stats"
           icon={Activity}
-          disabled={!hasRoute}
+          disabled={!canShowStats}
           onClick={() => openScreen("stats")}
         />
       </nav>

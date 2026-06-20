@@ -23,6 +23,10 @@ export function saveRoute(route: BikeRoute): void {
   saveRouteToHistory(normalized);
 }
 
+export function clearRoute(): void {
+  localStorage.removeItem(routeKey);
+}
+
 export function loadSavedRoutes(): BikeRoute[] {
   return (loadJson<BikeRoute[]>(savedRoutesKey) ?? []).map(normalizeRoute);
 }
