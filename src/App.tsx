@@ -85,6 +85,7 @@ export function App() {
   const [apiKey, setApiKey] = useState(savedInitialKey);
   const [apiKeyDraft, setApiKeyDraft] = useState(savedInitialKey);
   const [keyDialogOpen, setKeyDialogOpen] = useState(!savedInitialKey);
+  const [collapsedScreen, setCollapsedScreen] = useState<Screen | null>(null);
   const [route, setRoute] = useState<BikeRoute | null>(() => loadRoute());
   const [ride, setRide] = useState<RideState>(
     () => loadRide() ?? { active: false, samples: [] },
@@ -369,6 +370,11 @@ export function App() {
 
   function openScreen(target: Screen) {
     if ((target === "ride" || target === "stats") && !hasRoute) return;
+    if (screen === target) {
+      setCollapsedScreen((current) => (current === target ? null : target));
+      return;
+    }
+    setCollapsedScreen(null);
     setScreen(target);
   }
 
@@ -421,7 +427,7 @@ export function App() {
           <KeyRound size={19} />
         </button>
 
-        {screen === "planner" && (
+        {screen === "planner" && collapsedScreen !== "planner" && (
           <section className="sheet planner-sheet" aria-label="Route planner">
             <div className="mode-row" role="tablist" aria-label="Route mode">
               {(["fastest", "flexible", "safest"] as RouteMode[]).map(
@@ -558,18 +564,22 @@ export function App() {
           </section>
         )}
 
-        {screen === "ride" && hasRoute && (
+        {collapsedScreen && (
+          <button
+            className="collapsed-route-chip"
+            type="button"
+            onClick={() => setCollapsedScreen(null)}
+          >
+            {collapsedScreen === "planner" && <Route size={18} />}
+            {collapsedScreen === "ride" && <Navigation size={18} />}
+            {collapsedScreen === "stats" && <Activity size={18} />}
+            <span>{collapsedScreen === "planner" ? "Planner" : collapsedScreen === "ride" ? "Ride" : "Stats"}</span>
+            {route && <strong>{formatDistance(route.distanceMeters)}</strong>}
+          </button>
+        )}
+
+        {screen === "ride" && hasRoute && collapsedScreen !== "ride" && (
           <section className="ride-panel" aria-label="Active ride">
-            <div className="speed-card">
-              <div>
-                <p className="eyebrow">Current speed</p>
-                <strong>{formatSpeed(stats.currentSpeedMps)}</strong>
-              </div>
-              <Gauge size={34} />
-            </div>
-            <div className="progress-track" aria-label="Route progress">
-              <span style={{ width: `${routeProgress}%` }} />
-            </div>
             <div className="maneuver-card">
               <Compass size={25} />
               <div>
@@ -584,36 +594,19 @@ export function App() {
                 </p>
               </div>
             </div>
-            <div className="computer-grid">
-              <Metric
-                icon={MapPinned}
-                label="Remaining"
-                value={formatDistance(remainingMeters)}
-              />
+            <div className="progress-track" aria-label="Route progress">
+              <span style={{ width: `${routeProgress}%` }} />
+            </div>
+            <div className="ride-guidance-row">
               <Metric
                 icon={Timer}
                 label="ETA"
                 value={formatDuration(etaSeconds)}
               />
               <Metric
-                icon={Bike}
-                label="Average"
-                value={formatSpeed(stats.averageSpeedMps)}
-              />
-              <Metric
-                icon={Zap}
-                label="Max"
-                value={formatSpeed(stats.maxSpeedMps)}
-              />
-              <Metric
-                icon={Activity}
-                label="Ridden"
-                value={formatDistance(riddenMeters)}
-              />
-              <Metric
-                icon={Clock3}
-                label="Elapsed"
-                value={formatDuration(stats.elapsedSeconds)}
+                icon={MapPinned}
+                label="Left"
+                value={formatDistance(remainingMeters)}
               />
             </div>
             <button className="danger-button" type="button" onClick={endRide}>
@@ -622,7 +615,7 @@ export function App() {
           </section>
         )}
 
-        {screen === "stats" && hasRoute && (
+        {screen === "stats" && hasRoute && collapsedScreen !== "stats" && (
           <section className="sheet stats-sheet" aria-label="Ride stats">
             <div className="stats-header">
               <div>
@@ -679,20 +672,20 @@ export function App() {
 
       <nav className="bottom-nav" aria-label="Primary">
         <NavButton
-          active={screen === "planner"}
+          active={screen === "planner" && collapsedScreen !== "planner"}
           label="Plan"
           icon={Route}
           onClick={() => openScreen("planner")}
         />
         <NavButton
-          active={screen === "ride"}
+          active={screen === "ride" && collapsedScreen !== "ride"}
           label="Ride"
           icon={Navigation}
           disabled={!hasRoute}
           onClick={() => openScreen("ride")}
         />
         <NavButton
-          active={screen === "stats"}
+          active={screen === "stats" && collapsedScreen !== "stats"}
           label="Stats"
           icon={Activity}
           disabled={!hasRoute}

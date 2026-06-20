@@ -589,6 +589,31 @@ input {
   font-size: 12px;
 }
 
+.collapsed-route-chip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(96px + env(safe-area-inset-bottom));
+  z-index: 10;
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 8px;
+  border-radius: 999px;
+  padding: 0 14px;
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--green-900);
+  box-shadow: var(--shadow);
+  transform: translateX(-50%);
+  backdrop-filter: blur(14px);
+  font-weight: 780;
+  animation: rise-in-centered 180ms ease both;
+}
+
+.collapsed-route-chip strong {
+  color: rgba(22, 54, 41, 0.62);
+  font-size: 13px;
+}
+
 .ride-panel {
   padding: 14px;
 }
@@ -630,6 +655,21 @@ input {
   border-radius: inherit;
   background: var(--green-800);
   transition: width 240ms ease;
+}
+
+.ride-guidance-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.ride-panel .metric {
+  min-height: 72px;
+}
+
+.ride-panel .danger-button {
+  min-height: 42px;
 }
 
 .maneuver-card {
@@ -752,6 +792,17 @@ input {
   }
 }
 
+@keyframes rise-in-centered {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
 @keyframes pop-in {
   from {
     opacity: 0;
@@ -817,5 +868,128 @@ input {
 
   .metric strong {
     font-size: 18px;
+  }
+}
+
+@media (max-width: 640px) {
+  .sheet,
+  .ride-panel {
+    bottom: calc(104px + env(safe-area-inset-bottom));
+    border-radius: 20px;
+  }
+
+  .planner-sheet {
+    max-height: min(68vh, calc(100vh - 170px));
+    padding: 10px;
+  }
+
+  .route-points {
+    gap: 6px;
+    margin-top: 8px;
+    padding: 6px;
+    border-radius: 15px;
+  }
+
+  .place-field {
+    min-height: 58px;
+    padding: 7px 9px;
+    border-radius: 12px;
+  }
+
+  .place-field span {
+    margin-bottom: 1px;
+    font-size: 12px;
+  }
+
+  .place-field input {
+    font-size: 13px;
+  }
+
+  .place-field p {
+    font-size: 11px;
+  }
+
+  .mode-row,
+  .planner-actions {
+    gap: 6px;
+  }
+
+  .mode-pill {
+    min-height: 38px;
+    font-size: 13px;
+  }
+
+  .add-stop-button {
+    min-height: 38px;
+    font-size: 13px;
+  }
+
+  .icon-button,
+  .primary-button,
+  .secondary-button,
+  .danger-button {
+    min-height: 42px;
+  }
+
+  .route-summary,
+  .ride-guidance-row,
+  .stats-grid {
+    gap: 6px;
+  }
+
+  .metric {
+    min-height: 70px;
+    padding: 8px;
+  }
+
+  .metric strong {
+    font-size: 18px;
+  }
+
+  .provider-note {
+    margin-top: 8px;
+  }
+
+  .suggestion-list {
+    position: fixed;
+    z-index: 50;
+    top: auto;
+    right: 12px;
+    bottom: calc(96px + env(safe-area-inset-bottom));
+    left: 12px;
+    max-height: min(38vh, 260px);
+    border-radius: 18px;
+    padding: 6px;
+    box-shadow: 0 8px 22px rgba(18, 68, 46, 0.14);
+  }
+
+  .suggestion-row {
+    padding: 12px;
+  }
+
+  .ride-panel {
+    padding: 12px;
+  }
+
+  .maneuver-card {
+    padding: 12px;
+    border-radius: 14px;
+  }
+
+  .maneuver-card h2 {
+    font-size: 19px;
+  }
+
+  .bottom-nav {
+    left: 10px;
+    right: 10px;
+    bottom: calc(10px + env(safe-area-inset-bottom));
+    padding: 6px;
+    border-radius: 24px;
+  }
+
+  .nav-button {
+    min-height: 52px;
+    border-radius: 18px;
   }
 }
