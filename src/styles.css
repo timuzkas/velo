@@ -804,10 +804,9 @@ input {
   }
 
   .planner-actions {
-    grid-template-columns: 44px 1fr;
+    grid-template-columns: 48px minmax(0, 1fr);
   }
 
-  .planner-actions .primary-button,
   .planner-actions .secondary-button {
     grid-column: 1 / -1;
   }

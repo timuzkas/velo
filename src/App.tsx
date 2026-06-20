@@ -454,6 +454,7 @@ export function App() {
                 loading={searchingTarget === "start"}
                 suggestions={suggestions.start ?? []}
                 onFocus={() => setActiveTarget("start")}
+                onBlur={() => setActiveTarget((current) => (current === "start" ? null : current))}
                 onChange={(value) => updateQuery("start", value)}
                 onSelect={(suggestion) => selectSuggestion("start", suggestion)}
               />
@@ -471,6 +472,7 @@ export function App() {
                     suggestions={suggestions[target] ?? []}
                     removable
                     onFocus={() => setActiveTarget(target)}
+                    onBlur={() => setActiveTarget((current) => (current === target ? null : current))}
                     onChange={(value) => updateQuery(target, value)}
                     onRemove={() => removeStop(stop.id)}
                     onSelect={(suggestion) =>
@@ -488,6 +490,7 @@ export function App() {
                 loading={searchingTarget === "end"}
                 suggestions={suggestions.end ?? []}
                 onFocus={() => setActiveTarget("end")}
+                onBlur={() => setActiveTarget((current) => (current === "end" ? null : current))}
                 onChange={(value) => updateQuery("end", value)}
                 onSelect={(suggestion) => selectSuggestion("end", suggestion)}
               />
@@ -775,6 +778,7 @@ function PlaceSearchField({
   suggestions,
   removable = false,
   onFocus,
+  onBlur,
   onChange,
   onSelect,
   onRemove,
@@ -787,6 +791,7 @@ function PlaceSearchField({
   suggestions: PlaceSuggestion[];
   removable?: boolean;
   onFocus: () => void;
+  onBlur: () => void;
   onChange: (value: string) => void;
   onSelect: (suggestion: PlaceSuggestion) => void;
   onRemove?: () => void;
@@ -800,6 +805,7 @@ function PlaceSearchField({
           <input
             value={value}
             onFocus={onFocus}
+            onBlur={onBlur}
             onChange={(event) => onChange(event.target.value)}
             onKeyDown={(event) => {
               if (
