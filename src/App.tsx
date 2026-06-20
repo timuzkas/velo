@@ -491,6 +491,11 @@ export function App() {
                 onChange={(value) => updateQuery("end", value)}
                 onSelect={(suggestion) => selectSuggestion("end", suggestion)}
               />
+
+              <button className="add-stop-button" type="button" onClick={addStop}>
+                <Plus size={18} />
+                <span>Add stop</span>
+              </button>
             </div>
 
             <div className="planner-actions">
@@ -501,14 +506,6 @@ export function App() {
                 title="Use current location"
               >
                 <LocateFixed size={20} />
-              </button>
-              <button
-                className="secondary-button"
-                type="button"
-                onClick={addStop}
-              >
-                <Plus size={18} />
-                <span>Stop</span>
               </button>
               <button
                 className="primary-button"
