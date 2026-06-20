@@ -9,6 +9,7 @@ import {
   Compass,
   Flag,
   Gauge,
+  Download,
   Home,
   KeyRound,
   LocateFixed,
@@ -31,6 +32,7 @@ import { searchPlaces, type PlaceSuggestion } from "./geocoding";
 import {
   cumulativeManeuverProgressMeters,
   deriveHeadingDegrees,
+  distanceMeters,
   formatDistance,
   formatDuration,
   formatSpeed,
@@ -108,13 +110,18 @@ export function App() {
   const [collapsedScreen, setCollapsedScreen] = useState<Screen | null>(null);
   const [route, setRoute] = useState<BikeRoute | null>(() => loadRoute());
   const [completedRoute, setCompletedRoute] = useState<BikeRoute | null>(null);
-  const [savedRoutes, setSavedRoutes] = useState<BikeRoute[]>(() => loadSavedRoutes());
+  const [savedRoutes, setSavedRoutes] = useState<BikeRoute[]>(() =>
+    loadSavedRoutes(),
+  );
   const [savedPlaces, setSavedPlaces] = useState(() => loadSavedPlaces());
   const [recentExpanded, setRecentExpanded] = useState(false);
-  const [placeEditTarget, setPlaceEditTarget] = useState<PlaceEditTarget | null>(null);
+  const [placeEditTarget, setPlaceEditTarget] =
+    useState<PlaceEditTarget | null>(null);
   const [placeEditQuery, setPlaceEditQuery] = useState("");
-  const [mobileSearchTarget, setMobileSearchTarget] = useState<SearchTarget | null>(null);
-  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [mobileSearchTarget, setMobileSearchTarget] =
+    useState<SearchTarget | null>(null);
+  const [installPrompt, setInstallPrompt] =
+    useState<BeforeInstallPromptEvent | null>(null);
   const [ride, setRide] = useState<RideState>(
     () => loadRide() ?? { active: false, samples: [] },
   );
@@ -137,11 +144,16 @@ export function App() {
     null;
   const positionProgressMeters =
     screen === "ride" && route
-      ? nearestRouteProgressMeters(route.geometry, userLocation ?? latestSample ?? null)
+      ? nearestRouteProgressMeters(
+          route.geometry,
+          userLocation ?? latestSample ?? null,
+        )
       : 0;
   const riddenMeters = stats.distanceMeters;
   const navigationProgressMeters =
-    screen === "ride" ? Math.max(riddenMeters, positionProgressMeters) : riddenMeters;
+    screen === "ride"
+      ? Math.max(riddenMeters, positionProgressMeters)
+      : riddenMeters;
   const remainingMeters = route
     ? Math.max(0, route.distanceMeters - navigationProgressMeters)
     : 0;
@@ -164,13 +176,19 @@ export function App() {
     (progress) => progress > navigationProgressMeters + 8,
   );
   const nextManeuver =
-    nextManeuverIndex >= 0 ? route?.maneuvers[nextManeuverIndex] : route?.maneuvers.at(-1);
+    nextManeuverIndex >= 0
+      ? route?.maneuvers[nextManeuverIndex]
+      : route?.maneuvers.at(-1);
   const nextManeuverDistanceMeters =
     nextManeuverIndex >= 0
-      ? Math.max(0, maneuverProgressMarkers[nextManeuverIndex] - navigationProgressMeters)
+      ? Math.max(
+          0,
+          maneuverProgressMarkers[nextManeuverIndex] - navigationProgressMeters,
+        )
       : 0;
   const nextManeuverEtaSeconds =
-    nextManeuverDistanceMeters / Math.max(stats.currentSpeedMps, stats.averageSpeedMps, 1.4);
+    nextManeuverDistanceMeters /
+    Math.max(stats.currentSpeedMps, stats.averageSpeedMps, 1.4);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
@@ -190,11 +208,16 @@ export function App() {
       setInstallPrompt(event as BeforeInstallPromptEvent);
     };
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-    return () => window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    return () =>
+      window.removeEventListener(
+        "beforeinstallprompt",
+        handleBeforeInstallPrompt,
+      );
   }, []);
 
   useEffect(() => {
-    if (!hasRoute && !completedRoute && screen !== "planner") setScreen("planner");
+    if (!hasRoute && !completedRoute && screen !== "planner")
+      setScreen("planner");
   }, [completedRoute, hasRoute, screen]);
 
   useEffect(() => {
@@ -266,6 +289,14 @@ export function App() {
     return stops.find((stop) => target === `stop:${stop.id}`)?.query ?? "";
   }
 
+  function getTargetCoordinate(target: SearchTarget): Coordinate {
+    if (target === "start") return start;
+    if (target === "end") return end;
+    return (
+      stops.find((stop) => target === `stop:${stop.id}`)?.coordinate ?? start
+    );
+  }
+
   function beginPlaceEdit(kind: PlaceEditTarget) {
     const place = savedPlaces[kind];
     setPlaceEditTarget(kind);
@@ -296,7 +327,11 @@ export function App() {
       setMobileSearchTarget(null);
       return;
     }
-    setCoordinateForTarget(target, option.coordinate, option.value ?? option.label);
+    setCoordinateForTarget(
+      target,
+      option.coordinate,
+      option.value ?? option.label,
+    );
     setMobileSearchTarget(null);
   }
 
@@ -310,7 +345,8 @@ export function App() {
   function closeMobileSearch() {
     setMobileSearchTarget(null);
     setActiveTarget(null);
-    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    if (document.activeElement instanceof HTMLElement)
+      document.activeElement.blur();
   }
 
   function markRouteDirty() {
@@ -383,7 +419,10 @@ export function App() {
     );
   }
 
-  function loadSavedRoute(savedRoute: BikeRoute, targetScreen: Screen = "planner") {
+  function loadSavedRoute(
+    savedRoute: BikeRoute,
+    targetScreen: Screen = "planner",
+  ) {
     setRoute(savedRoute);
     setMode(savedRoute.mode);
     setStart(savedRoute.geometry[0] ?? start);
@@ -511,7 +550,11 @@ export function App() {
     markRouteDirty();
   }
 
-  function savePlace(kind: PlaceEditTarget, coordinate: Coordinate, label: string) {
+  function savePlace(
+    kind: PlaceEditTarget,
+    coordinate: Coordinate,
+    label: string,
+  ) {
     const nextPlaces = saveSavedPlace(kind, { coordinate, label });
     setSavedPlaces(nextPlaces);
   }
@@ -566,8 +609,26 @@ export function App() {
         </button>
 
         {installPrompt && (
-          <button className="install-fab" type="button" onClick={promptInstall}>
-            Install
+          <button
+            className="install-fab"
+            type="button"
+            onClick={promptInstall}
+            title="Install app"
+          >
+            <Download size={19} />
+          </button>
+        )}
+
+        {screen === "ride" && (
+          <button
+            className={`recenter-fab ${rideFollowing ? "" : "visible"}`}
+            type="button"
+            onClick={() => setRideFollowing(true)}
+            title="Re-center"
+            aria-hidden={rideFollowing}
+            tabIndex={rideFollowing ? -1 : 0}
+          >
+            <LocateFixed size={19} />
           </button>
         )}
 
@@ -583,7 +644,11 @@ export function App() {
                 suggestions={suggestions.start ?? []}
                 savedOptions={savedPlaceOptions()}
                 onFocus={() => openSearchTarget("start")}
-                onBlur={() => setActiveTarget((current) => (current === "start" ? null : current))}
+                onBlur={() =>
+                  setActiveTarget((current) =>
+                    current === "start" ? null : current,
+                  )
+                }
                 onChange={(value) => updateQuery("start", value)}
                 onSelect={(suggestion) => selectSuggestion("start", suggestion)}
                 onSavedSelect={(option) => selectSavedPlace("start", option)}
@@ -603,7 +668,11 @@ export function App() {
                     savedOptions={savedPlaceOptions()}
                     removable
                     onFocus={() => openSearchTarget(target)}
-                    onBlur={() => setActiveTarget((current) => (current === target ? null : current))}
+                    onBlur={() =>
+                      setActiveTarget((current) =>
+                        current === target ? null : current,
+                      )
+                    }
                     onChange={(value) => updateQuery(target, value)}
                     onRemove={() => removeStop(stop.id)}
                     onSelect={(suggestion) =>
@@ -623,13 +692,21 @@ export function App() {
                 suggestions={suggestions.end ?? []}
                 savedOptions={savedPlaceOptions()}
                 onFocus={() => openSearchTarget("end")}
-                onBlur={() => setActiveTarget((current) => (current === "end" ? null : current))}
+                onBlur={() =>
+                  setActiveTarget((current) =>
+                    current === "end" ? null : current,
+                  )
+                }
                 onChange={(value) => updateQuery("end", value)}
                 onSelect={(suggestion) => selectSuggestion("end", suggestion)}
                 onSavedSelect={(option) => selectSavedPlace("end", option)}
               />
 
-              <button className="add-stop-button" type="button" onClick={addStop}>
+              <button
+                className="add-stop-button"
+                type="button"
+                onClick={addStop}
+              >
                 <Plus size={18} />
                 <span>Add stop</span>
               </button>
@@ -719,7 +796,11 @@ export function App() {
                   type="button"
                   onClick={() => setRecentExpanded((expanded) => !expanded)}
                 >
-                  {recentExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                  {recentExpanded ? (
+                    <ChevronDown size={16} />
+                  ) : (
+                    <ChevronRight size={16} />
+                  )}
                   <span>Recent routes</span>
                   <strong>{savedRoutes.length}</strong>
                 </button>
@@ -733,7 +814,9 @@ export function App() {
                       >
                         <Route size={17} />
                         <span>{formatDistance(savedRoute.distanceMeters)}</span>
-                        <strong>{formatDuration(savedRoute.durationSeconds)}</strong>
+                        <strong>
+                          {formatDuration(savedRoute.durationSeconds)}
+                        </strong>
                       </button>
                       <button
                         className="mini-icon-button"
@@ -767,19 +850,19 @@ export function App() {
             {collapsedScreen === "planner" && <Route size={18} />}
             {collapsedScreen === "ride" && <Navigation size={18} />}
             {collapsedScreen === "stats" && <Activity size={18} />}
-            <span>{collapsedScreen === "planner" ? "Planner" : collapsedScreen === "ride" ? "Ride" : "Stats"}</span>
+            <span>
+              {collapsedScreen === "planner"
+                ? "Planner"
+                : collapsedScreen === "ride"
+                  ? "Ride"
+                  : "Stats"}
+            </span>
             {route && <strong>{formatDistance(route.distanceMeters)}</strong>}
           </button>
         )}
 
         {screen === "ride" && hasRoute && collapsedScreen !== "ride" && (
           <section className="ride-panel" aria-label="Active ride">
-            {!rideFollowing && (
-              <button className="recenter-button" type="button" onClick={() => setRideFollowing(true)}>
-                <LocateFixed size={17} />
-                <span>Re-center</span>
-              </button>
-            )}
             <div className="maneuver-card">
               <Compass size={25} />
               <div>
@@ -820,7 +903,7 @@ export function App() {
             <div className="stats-header">
               <div>
                 <p className="eyebrow">Ride computer</p>
-                <h2>{ride.active ? "Live stats" : "Last ride"}</h2>
+                <h2>{ride.active ? "Journey stats" : "Last ride"}</h2>
               </div>
               <Activity size={26} />
             </div>
@@ -914,7 +997,9 @@ export function App() {
             </div>
             <h2 id="key-dialog-title">Enable ORS routing</h2>
             <p className="dialog-copy">
-              Paste an OpenRouteService API key to have working navigation in the app. It is saved only in this browser. Without a key, Velo uses local demo routes.
+              Paste an OpenRouteService API key to have working navigation in
+              the app. It is saved only in this browser. Without a key, Velo
+              uses local demo routes.
             </p>
             <label className="key-entry">
               <span>OpenRouteService API key</span>
@@ -958,7 +1043,11 @@ export function App() {
 
       {placeEditTarget && (
         <div className="dialog-backdrop" role="presentation">
-          <section className="key-dialog place-dialog" role="dialog" aria-modal="true">
+          <section
+            className="key-dialog place-dialog"
+            role="dialog"
+            aria-modal="true"
+          >
             <button
               className="dialog-close"
               type="button"
@@ -968,13 +1057,22 @@ export function App() {
               <X size={18} />
             </button>
             <div className="dialog-icon">
-              {placeEditTarget === "home" ? <Home size={24} /> : <MapPinned size={24} />}
+              {placeEditTarget === "home" ? (
+                <Home size={24} />
+              ) : (
+                <MapPinned size={24} />
+              )}
             </div>
             <p className="eyebrow">Saved place</p>
             <h2>Set {placeEditTarget === "home" ? "Home" : "Work"}</h2>
-            <p className="dialog-copy">Search for a place and save it locally. It will appear inside route search suggestions.</p>
+            <p className="dialog-copy">
+              Search for a place and save it locally. It will appear inside
+              route search suggestions.
+            </p>
             <label className="key-entry">
-              <span>{placeEditTarget === "home" ? "Home" : "Work"} location</span>
+              <span>
+                {placeEditTarget === "home" ? "Home" : "Work"} location
+              </span>
               <input
                 value={placeEditQuery}
                 onChange={(event) => setPlaceEditQuery(event.target.value)}
@@ -1012,12 +1110,17 @@ export function App() {
                 : "Stop"
           }
           value={getTargetQuery(mobileSearchTarget)}
+          originCoordinate={getTargetCoordinate(mobileSearchTarget)}
           loading={searchingTarget === mobileSearchTarget}
           savedOptions={savedPlaceOptions()}
           suggestions={suggestions[mobileSearchTarget] ?? []}
           onChange={(value) => updateQuery(mobileSearchTarget, value)}
-          onSelect={(suggestion) => selectSuggestion(mobileSearchTarget, suggestion)}
-          onSavedSelect={(option) => selectSavedPlace(mobileSearchTarget, option)}
+          onSelect={(suggestion) =>
+            selectSuggestion(mobileSearchTarget, suggestion)
+          }
+          onSavedSelect={(option) =>
+            selectSavedPlace(mobileSearchTarget, option)
+          }
           onClose={closeMobileSearch}
         />
       )}
@@ -1092,43 +1195,57 @@ function PlaceSearchField({
       <p>
         {coordinate.lat.toFixed(4)}, {coordinate.lon.toFixed(4)}
       </p>
-      {active && (loading || suggestions.length > 0 || savedOptions.length > 0) && (
-        <div className="suggestion-list">
-          <div className="suggestion-pills" aria-label="Quick destinations">
-            {savedOptions.map((option) => (
+      {active &&
+        (loading || suggestions.length > 0 || savedOptions.length > 0) && (
+          <div className="suggestion-list">
+            <div className="suggestion-pills" aria-label="Quick destinations">
+              {savedOptions.map((option) => (
+                <button
+                  key={option.kind}
+                  className={`suggestion-pill ${option.coordinate ? "" : "unset"}`}
+                  type="button"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => onSavedSelect(option)}
+                >
+                  {option.kind === "home" ? (
+                    <Home size={15} />
+                  ) : (
+                    <MapPinned size={15} />
+                  )}
+                  <span>{option.label}</span>
+                  {option.coordinate ? (
+                    <small>
+                      {formatDistance(
+                        distanceMeters(coordinate, option.coordinate),
+                      )}
+                    </small>
+                  ) : (
+                    <small
+                      className="edit-place-icon"
+                      aria-label={`Set ${option.label}`}
+                    >
+                      <Pencil size={13} />
+                    </small>
+                  )}
+                </button>
+              ))}
+            </div>
+            {loading && (
+              <div className="suggestion-row muted">Searching...</div>
+            )}
+            {suggestions.map((suggestion) => (
               <button
-                key={option.kind}
-                className={`suggestion-pill ${option.coordinate ? "" : "unset"}`}
+                key={suggestion.id}
+                className="suggestion-row"
                 type="button"
                 onMouseDown={(event) => event.preventDefault()}
-                onClick={() => onSavedSelect(option)}
+                onClick={() => onSelect(suggestion)}
               >
-                {option.kind === "home" ? <Home size={15} /> : <MapPinned size={15} />}
-                <span>{option.label}</span>
-                {option.value ? (
-                  <small>{option.value}</small>
-                ) : (
-                  <small className="edit-place-icon" aria-label={`Set ${option.label}`}>
-                    <Pencil size={13} />
-                  </small>
-                )}
+                {suggestion.label}
               </button>
             ))}
           </div>
-          {loading && <div className="suggestion-row muted">Searching...</div>}
-          {suggestions.map((suggestion) => (
-            <button
-              key={suggestion.id}
-              className="suggestion-row"
-              type="button"
-              onMouseDown={(event) => event.preventDefault()}
-              onClick={() => onSelect(suggestion)}
-            >
-              {suggestion.label}
-            </button>
-          ))}
-        </div>
-      )}
+        )}
     </div>
   );
 }
@@ -1154,6 +1271,7 @@ function Metric({
 function MobileSearchOverlay({
   label,
   value,
+  originCoordinate,
   loading,
   savedOptions,
   suggestions,
@@ -1164,6 +1282,7 @@ function MobileSearchOverlay({
 }: {
   label: string;
   value: string;
+  originCoordinate: Coordinate;
   loading: boolean;
   savedOptions: SavedPlaceOption[];
   suggestions: PlaceSuggestion[];
@@ -1175,7 +1294,12 @@ function MobileSearchOverlay({
   return (
     <div className="mobile-search-overlay" role="dialog" aria-modal="true">
       <div className="mobile-search-bar">
-        <button className="mini-icon-button" type="button" onClick={onClose} title="Close search">
+        <button
+          className="mini-icon-button"
+          type="button"
+          onClick={onClose}
+          title="Close search"
+        >
           <X size={18} />
         </button>
         <label>
@@ -1197,12 +1321,23 @@ function MobileSearchOverlay({
             type="button"
             onClick={() => onSavedSelect(option)}
           >
-            {option.kind === "home" ? <Home size={16} /> : <MapPinned size={16} />}
-            <span>{option.label}</span>
-            {option.value ? (
-              <small>{option.value}</small>
+            {option.kind === "home" ? (
+              <Home size={16} />
             ) : (
-              <small className="edit-place-icon" aria-label={`Set ${option.label}`}>
+              <MapPinned size={16} />
+            )}
+            <span>{option.label}</span>
+            {option.coordinate ? (
+              <small>
+                {formatDistance(
+                  distanceMeters(originCoordinate, option.coordinate),
+                )}
+              </small>
+            ) : (
+              <small
+                className="edit-place-icon"
+                aria-label={`Set ${option.label}`}
+              >
                 <Pencil size={13} />
               </small>
             )}
