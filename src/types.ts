@@ -18,11 +18,17 @@ export type BikeRoute = {
   mode: RouteMode;
   geometry: Coordinate[];
   waypoints: Coordinate[];
+  createdAt?: number;
   distanceMeters: number;
   durationSeconds: number;
   elevationGainMeters?: number;
   maneuvers: Maneuver[];
   provider: string;
+};
+
+export type SavedPlace = {
+  label: string;
+  coordinate: Coordinate;
 };
 
 export type RideSample = Coordinate & {

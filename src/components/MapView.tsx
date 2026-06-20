@@ -9,14 +9,17 @@ type MapViewProps = {
   userLocation?: Coordinate | null;
   userHeadingDegrees?: number | null;
   followUser?: boolean;
+  onUserPan?: () => void;
   onMapClick?: (coordinate: Coordinate) => void;
 };
 
-export function MapView({ route, userLocation, userHeadingDegrees, followUser = false, onMapClick }: MapViewProps) {
+export function MapView({ route, userLocation, userHeadingDegrees, followUser = false, onUserPan, onMapClick }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const clickHandlerRef = useRef(onMapClick);
+  const userPanHandlerRef = useRef(onUserPan);
   clickHandlerRef.current = onMapClick;
+  userPanHandlerRef.current = onUserPan;
 
   const style = useMemo(
     () => ({
@@ -48,6 +51,10 @@ export function MapView({ route, userLocation, userHeadingDegrees, followUser = 
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: false }), 'top-right');
     map.on('click', (event) => {
       clickHandlerRef.current?.({ lat: event.lngLat.lat, lon: event.lngLat.lng });
+    });
+    map.on('dragstart', () => userPanHandlerRef.current?.());
+    map.on('zoomstart', (event) => {
+      if (event.originalEvent) userPanHandlerRef.current?.();
     });
 
     mapRef.current = map;
