@@ -122,6 +122,7 @@ export function App() {
     useState<SearchTarget | null>(null);
   const [installPrompt, setInstallPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
+  const [installHelpOpen, setInstallHelpOpen] = useState(false);
   const [ride, setRide] = useState<RideState>(
     () => loadRide() ?? { active: false, samples: [] },
   );
@@ -135,6 +136,15 @@ export function App() {
   const statsRoute = route ?? completedRoute;
   const canShowStats = Boolean(route || (screen === "stats" && completedRoute));
   const hasApiKey = Boolean(apiKey);
+  const isIosInstallAvailable = useMemo(() => {
+    const standaloneNavigator = navigator as Navigator & {
+      standalone?: boolean;
+    };
+    const isAppleMobile =
+      /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    return isAppleMobile && standaloneNavigator.standalone !== true;
+  }, []);
 
   const stats = useMemo(() => computeRideStats(ride, now), [ride, now]);
   const latestSample = ride.samples.at(-1);
@@ -373,25 +383,77 @@ export function App() {
       setRouteError("Geolocation is not available in this browser.");
       return;
     }
+    setRouteError(null);
+    let settled = false;
+    let fallbackWatchId: number | null = null;
+    let fallbackTimer: number | null = null;
+
+    const finish = (position: GeolocationPosition) => {
+      if (settled) return;
+      settled = true;
+      if (fallbackWatchId !== null)
+        navigator.geolocation.clearWatch(fallbackWatchId);
+      if (fallbackTimer !== null) window.clearTimeout(fallbackTimer);
+      const coordinate = {
+        lat: position.coords.latitude,
+        lon: position.coords.longitude,
+      };
+      setRouteError(null);
+      setUserLocation(coordinate);
+      setStart(coordinate);
+      setStartQuery("Current location");
+      setActiveTarget(null);
+      markRouteDirty();
+    };
+
+    const fail = (error: GeolocationPositionError) => {
+      if (settled) return;
+      if (fallbackWatchId !== null)
+        navigator.geolocation.clearWatch(fallbackWatchId);
+      if (fallbackTimer !== null) window.clearTimeout(fallbackTimer);
+
+      if (error.code === error.PERMISSION_DENIED) {
+        settled = true;
+        setRouteError(
+          "Safari blocked location. In Settings > Safari > Location, allow this site and reload.",
+        );
+        return;
+      }
+
+      fallbackWatchId = navigator.geolocation.watchPosition(
+        finish,
+        () => {
+          if (settled) return;
+          settled = true;
+          if (fallbackWatchId !== null)
+            navigator.geolocation.clearWatch(fallbackWatchId);
+          setRouteError(
+            "Could not get a GPS fix. Check Location Services and try outdoors.",
+          );
+        },
+        { enableHighAccuracy: true, maximumAge: 15_000, timeout: 20_000 },
+      );
+      fallbackTimer = window.setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        if (fallbackWatchId !== null)
+          navigator.geolocation.clearWatch(fallbackWatchId);
+        setRouteError(
+          "Location timed out. Keep Safari open and try again with clear sky.",
+        );
+      }, 25_000);
+    };
+
     navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const coordinate = {
-          lat: position.coords.latitude,
-          lon: position.coords.longitude,
-        };
-        setUserLocation(coordinate);
-        setStart(coordinate);
-        setStartQuery("Current location");
-        setActiveTarget(null);
-        markRouteDirty();
-      },
-      () => setRouteError("Location permission was blocked or unavailable."),
-      { enableHighAccuracy: true, timeout: 10_000 },
+      finish,
+      fail,
+      { enableHighAccuracy: true, maximumAge: 15_000, timeout: 20_000 },
     );
   }
 
   function startRide(routeToRide = route) {
     if (!routeToRide) return;
+    setRouteError(null);
     setRoute(routeToRide);
     setScreen("ride");
     setRideFollowing(true);
@@ -414,8 +476,14 @@ export function App() {
             : current,
         );
       },
-      () => undefined,
-      { enableHighAccuracy: true, maximumAge: 1000, timeout: 15_000 },
+      (error) => {
+        setRouteError(
+          error.code === error.PERMISSION_DENIED
+            ? "Safari blocked location for ride tracking."
+            : "Ride tracking is waiting for a GPS fix.",
+        );
+      },
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 20_000 },
     );
   }
 
@@ -560,7 +628,10 @@ export function App() {
   }
 
   async function promptInstall() {
-    if (!installPrompt) return;
+    if (!installPrompt) {
+      setInstallHelpOpen(true);
+      return;
+    }
     await installPrompt.prompt();
     await installPrompt.userChoice;
     setInstallPrompt(null);
@@ -608,12 +679,12 @@ export function App() {
           <KeyRound size={19} />
         </button>
 
-        {installPrompt && (
+        {(installPrompt || isIosInstallAvailable) && (
           <button
             className="install-fab"
             type="button"
             onClick={promptInstall}
-            title="Install app"
+            title={installPrompt ? "Install app" : "Install on iPhone"}
           >
             <Download size={19} />
           </button>
@@ -1037,6 +1108,41 @@ export function App() {
                 </button>
               )}
             </div>
+          </section>
+        </div>
+      )}
+
+      {installHelpOpen && (
+        <div className="dialog-backdrop" role="presentation">
+          <section
+            className="key-dialog install-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="install-dialog-title"
+          >
+            <button
+              className="dialog-close"
+              type="button"
+              onClick={() => setInstallHelpOpen(false)}
+              title="Close"
+            >
+              <X size={18} />
+            </button>
+            <div className="dialog-icon">
+              <Download size={24} />
+            </div>
+            <h2 id="install-dialog-title">Install on iPhone</h2>
+            <p className="dialog-copy">
+              Safari does not show a web install prompt. Use Share, then Add to
+              Home Screen.
+            </p>
+            <button
+              className="primary-button full-width-button"
+              type="button"
+              onClick={() => setInstallHelpOpen(false)}
+            >
+              Done
+            </button>
           </section>
         </div>
       )}
