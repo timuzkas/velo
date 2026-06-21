@@ -379,21 +379,32 @@ export function App() {
   }
 
   function useCurrentLocation() {
+    if (!window.isSecureContext) {
+      setRouteError(
+        "Location needs HTTPS on iPhone Safari. Open the HTTPS site, not http://.",
+      );
+      return;
+    }
     if (!navigator.geolocation) {
       setRouteError("Geolocation is not available in this browser.");
       return;
     }
-    setRouteError(null);
+    setRouteError("Waiting for GPS fix...");
     let settled = false;
-    let fallbackWatchId: number | null = null;
-    let fallbackTimer: number | null = null;
+    let locationWatchId: number | null = null;
+    let locationTimer: number | null = null;
+    const locationOptions: PositionOptions = {
+      enableHighAccuracy: true,
+      maximumAge: 0,
+      timeout: 30_000,
+    };
 
     const finish = (position: GeolocationPosition) => {
       if (settled) return;
       settled = true;
-      if (fallbackWatchId !== null)
-        navigator.geolocation.clearWatch(fallbackWatchId);
-      if (fallbackTimer !== null) window.clearTimeout(fallbackTimer);
+      if (locationWatchId !== null)
+        navigator.geolocation.clearWatch(locationWatchId);
+      if (locationTimer !== null) window.clearTimeout(locationTimer);
       const coordinate = {
         lat: position.coords.latitude,
         lon: position.coords.longitude,
@@ -408,47 +419,35 @@ export function App() {
 
     const fail = (error: GeolocationPositionError) => {
       if (settled) return;
-      if (fallbackWatchId !== null)
-        navigator.geolocation.clearWatch(fallbackWatchId);
-      if (fallbackTimer !== null) window.clearTimeout(fallbackTimer);
-
       if (error.code === error.PERMISSION_DENIED) {
         settled = true;
+        if (locationWatchId !== null)
+          navigator.geolocation.clearWatch(locationWatchId);
+        if (locationTimer !== null) window.clearTimeout(locationTimer);
         setRouteError(
           "Safari blocked location. In Settings > Safari > Location, allow this site and reload.",
         );
         return;
       }
 
-      fallbackWatchId = navigator.geolocation.watchPosition(
-        finish,
-        () => {
-          if (settled) return;
-          settled = true;
-          if (fallbackWatchId !== null)
-            navigator.geolocation.clearWatch(fallbackWatchId);
-          setRouteError(
-            "Could not get a GPS fix. Check Location Services and try outdoors.",
-          );
-        },
-        { enableHighAccuracy: true, maximumAge: 15_000, timeout: 20_000 },
-      );
-      fallbackTimer = window.setTimeout(() => {
-        if (settled) return;
-        settled = true;
-        if (fallbackWatchId !== null)
-          navigator.geolocation.clearWatch(fallbackWatchId);
-        setRouteError(
-          "Location timed out. Keep Safari open and try again with clear sky.",
-        );
-      }, 25_000);
+      setRouteError("Still waiting for GPS fix...");
     };
 
-    navigator.geolocation.getCurrentPosition(
+    locationWatchId = navigator.geolocation.watchPosition(
       finish,
       fail,
-      { enableHighAccuracy: true, maximumAge: 15_000, timeout: 20_000 },
+      locationOptions,
     );
+    navigator.geolocation.getCurrentPosition(finish, fail, locationOptions);
+    locationTimer = window.setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      if (locationWatchId !== null)
+        navigator.geolocation.clearWatch(locationWatchId);
+      setRouteError(
+        "Location timed out. Keep Safari open, check Location Services, and try outdoors.",
+      );
+    }, 35_000);
   }
 
   function startRide(routeToRide = route) {
@@ -460,7 +459,14 @@ export function App() {
     const startedAt = Date.now();
     setRide({ active: true, startedAt, samples: [] });
 
-    if (!navigator.geolocation) return;
+    if (!window.isSecureContext) {
+      setRouteError("Ride tracking needs HTTPS on iPhone Safari.");
+      return;
+    }
+    if (!navigator.geolocation) {
+      setRouteError("Geolocation is not available in this browser.");
+      return;
+    }
     if (watchIdRef.current !== null)
       navigator.geolocation.clearWatch(watchIdRef.current);
     watchIdRef.current = navigator.geolocation.watchPosition(
@@ -477,13 +483,15 @@ export function App() {
         );
       },
       (error) => {
+        if (error.code !== error.PERMISSION_DENIED) {
+          setRouteError("Ride tracking is waiting for a GPS fix.");
+          return;
+        }
         setRouteError(
-          error.code === error.PERMISSION_DENIED
-            ? "Safari blocked location for ride tracking."
-            : "Ride tracking is waiting for a GPS fix.",
+          "Safari blocked location for ride tracking. Allow location and reload.",
         );
       },
-      { enableHighAccuracy: true, maximumAge: 5000, timeout: 20_000 },
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 30_000 },
     );
   }
 
